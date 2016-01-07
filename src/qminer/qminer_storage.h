@@ -238,6 +238,13 @@ private:
 	/// How many records are packed together into block;
 	TInt BlockSize;
 
+	/// Is this object using master BlobBs
+	bool MasterBlobBsUsed;
+	/// Has this object been loaded from the master BlobBs or not
+	bool MasterBlobBsInit;
+	/// Location in MasterBlobBs where this object's bureaucracy is stored
+	TBlobPt MasterBlobBsLoc;
+
 	/// Utility method for loading specific record
 	inline void LoadRec(int64 RecN) const;
 
@@ -245,6 +252,9 @@ private:
 	int SaveRec(int RecN);
 
 public:
+	TInMemStorage(const PBlobBs& MasterBlob, const int& _BlockSize = 1000);
+	TInMemStorage(const PBlobBs& MasterBlob, const TBlobPt& MasterBlobPt, const bool& _Lazy = false);
+
 	TInMemStorage(const TStr& _FNm, const int& _BlockSize = 1000);
 	TInMemStorage(const TStr& _FNm, const TFAccess& _Access, const bool& _Lazy = false);
 	~TInMemStorage();
@@ -263,10 +273,14 @@ public:
 	uint64 GetFirstValId() const;
 	uint64 GetLastValId() const;
 
+	/// Flush all data to disk
+	void Flush();
 	int PartialFlush(int WndInMsec = 500);
 	inline void LoadAll();
 
 	TBlobBsStats GetBlobBsStats() { return BlobStorage->GetStats(); }
+	/// Get location in master BlobBs where this object is stored
+	const TBlobPt GetMasterBlobBsLoc() const { return MasterBlobBsLoc; }
 
 #ifdef XTEST
 private:
@@ -849,6 +863,15 @@ private:
 	/// Time window settings
 	TStoreWndDesc WndDesc;
 	
+	/// Is this object using master BlobBs
+	bool MasterBlobBsUsed;
+	/// Has this object been loaded from the master BlobBs or not
+	bool MasterBlobBsInit;
+	/// Location in MasterBlobBs where this object's bureaucracy is stored
+	TBlobPt MasterBlobBsLoc;
+	/// Reference to master blob storage
+	PBlobBs MasterBlobBs;
+
 	/// initialize field storage location map
 	void InitFieldLocV();
 	/// Get TMem serialization of record from specified storage
@@ -908,6 +931,11 @@ private:
 	void InitDataFlags();
 
 public:
+	TStoreImpl(const TWPt<TBase>& _Base, const uint& StoreId,
+		const TStr& StoreName, const TStoreSchema& StoreSchema,
+		const int64& _MxCacheSize, const int& BlockSize);
+	TStoreImpl(const TWPt<TBase>& _Base, const TStr& _StoreFNm,
+		const TBlobPt& MasterBlobPt, const int64& _MxCacheSize, const bool& _Lazy = false);
 	TStoreImpl(const TWPt<TBase>& _Base, const uint& StoreId, 
 		const TStr& StoreName, const TStoreSchema& StoreSchema, 
 		const TStr& _StoreFNm, const int64& _MxCacheSize, const int& BlockSize);
@@ -1052,10 +1080,14 @@ public:
 	/// Helper function for returning JSon definition of store
 	PJsonVal GetStoreJson(const TWPt<TBase>& Base) const;
 
+	/// Save all data to disk
+	void Flush();
 	/// Save part of the data, given time-window
 	int PartialFlush(int WndInMsec = 500);
 	/// Retrieve performance statistics for this store
 	PJsonVal GetStats();
+	/// Get location in master BlobBs where this object is stored
+	const TBlobPt GetMasterBlobBsLoc() const { return MasterBlobBsLoc; }
 };
 
 ///////////////////////////////

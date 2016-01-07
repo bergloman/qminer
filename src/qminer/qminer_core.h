@@ -3545,6 +3545,9 @@ public:
 
 	// perform partial flush of data
 	int PartialFlush(int WndInMsec = 500);
+
+	/// Get access to master Blob storage - Empty is not used
+	PBlobBs GetMasterBlobBs() { QmAssertR(false, "Not implemented"); }
 };
 
 ////////////////////////////////////////////////////////////////////////////

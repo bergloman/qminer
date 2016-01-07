@@ -579,9 +579,9 @@ private:
 	}
 	
 public:
-	// Constructor that uses master PBlobBs - so that all data is stored in single place
+	/// Constructor that uses master PBlobBs - so that all data is stored in single place
 	TWndBlockCache(const PBlobBs& MasterBlob, const int64& MxCacheMem);
-	// Constructor that uses master PBlobBs - so that all data is stored in single place
+	/// Constructor that uses master PBlobBs - so that all data is stored in single place
 	TWndBlockCache(const PBlobBs& MasterBlob, const TBlobPt& MasterBlobPt, const int64& MxCacheMem);
 	TWndBlockCache(const TStr& _FNmPrefix, const int64& MxCacheMem, const int& _BlockSize);
 	TWndBlockCache(const TStr& _FNmPrefix, const TFAccess& _Access, const int64& MxCacheMem);
@@ -607,29 +607,14 @@ public:
 	bool DelVal();
 	// delete first N values
 	int DelVals(const int& _Vals);
+	/// Save all data to disk
+	void Flush();
 	/// Save part of the data, given time-window
-	int PartialFlush(int WndInMsec = 500) { 
-		TTmStopWatch sw(true);
-		int res = 0;
-		TLstNd<TInt>* current = BlockCache.Last();
-		while (current != NULL) {
-			if (sw.GetMSecInt() > WndInMsec) {
-				break; // time is up
-			}
-			TInt Key = current->GetVal();
-			PBlockDat Dat;
-			BlockCache.Get(Key, Dat);
-			if (Dat->IsChanged()) {
-				StoreBlock(Key);
-				Dat->SetNotChanged();
-				res++;
-			}
-			current = current->Prev();
-		}
-		return res;
-	}
+	int PartialFlush(int WndInMsec = 500);
 	/// Get statistics about BLOB storage
 	TBlobBsStats GetBlobBsStats() { return BlockBlobBs->GetStats(); }
+	/// Get location in master BlobBs where this object is stored
+	const TBlobPt GetMasterBlobBsLoc() const { return MasterBlobBsLoc; }
 };
 
 template <class TVal>
@@ -712,11 +697,6 @@ void TWndBlockCache<TVal>::DelBlock() {
 	BlockBlobPtV.Del(0);
 }
 
-/// Constructor that uses master PBlobBs - so that all data is stored in single place
-//TWndBlockCache(const PBlobBs& MasterBlob, const int64& MxCacheMem);
-/// Constructor that uses master PBlobBs - so that all data is stored in single place
-//TWndBlockCache(const PBlobBs& MasterBlob, const& TBlobPt MasterBlobPt, const int64& MxCacheMem);
-
 template <class TVal>
 TWndBlockCache<TVal>::TWndBlockCache(const PBlobBs& MasterBlob, const int64& MxCacheMem) :
 	BlockSize(_BlockSize), BlockCache(MxCacheMem, 1000000, GetVoidThis()) {
@@ -729,7 +709,6 @@ TWndBlockCache<TVal>::TWndBlockCache(const PBlobBs& MasterBlob, const int64& MxC
 	// initialize cache parameters
 	CacheResetThreshold = MAX(int64(0.1 * double(MxCacheMem)), int64(10 * 1024 * 1024));
 	NewCacheSizeInc = 0;
-	// initialize value disk store
 	
 	// create first block
 	EAssertR(AddBlock() == 0, "Error creating first cache block");
@@ -805,19 +784,65 @@ TWndBlockCache<TVal>::TWndBlockCache(const TStr& _FNmPrefix, const TFAccess& _Ac
 
 template <class TVal>
 TWndBlockCache<TVal>::~TWndBlockCache() {
-	if ((Access == faCreate) || (Access == faUpdate)) {
-		// flush all the latest changes in cache to the disk		
-		BlockCache.Flush();
-		// save the rest to FNmPrefix + ".Dat"
-		TFOut FOut(FNmPrefix + ".Dat");
-		Vals.Save(FOut);
-		BlockSize.Save(FOut);
-		BlockBlobPtV.Save(FOut);
-		FirstBlockOffset.Save(FOut);
-		FirstValOffset.Save(FOut);
+	Flush();
+}
+
+/// Save all data to disk
+template <class TVal>
+void TWndBlockCache<TVal>::Flush() {
+	// flush all the latest changes in cache to the disk		
+	BlockCache.Flush();
+	if (MasterBlobBsUsed) {
+		PMem Mem = TMem::New(5*sizeof(TBlobPt));
+		{
+			PSOut SOut = TMemOut::New(Mem);
+			Vals.Save(*SOut());
+			BlockSize.Save(*SOut());
+			BlockBlobPtV.Save(*SOut());
+			FirstBlockOffset.Save(*SOut());
+			FirstValOffset.Save(*SOut());
+		}
+		PSIn SIn = TMemIn::New(*Mem());
+		if (MasterBlobBsInit) {
+			MasterBlobBsLoc = BlockBlobBs->PutBlob(MasterBlobBsLoc, SIn);
+		} else {
+			MasterBlobBsLoc = BlockBlobBs->PutBlob(SIn);
+		}
+	} else{
+		if ((Access == faCreate) || (Access == faUpdate)) {
+			// save the rest to FNmPrefix + ".Dat"
+			TFOut FOut(FNmPrefix + ".Dat");
+			Vals.Save(FOut);
+			BlockSize.Save(FOut);
+			BlockBlobPtV.Save(FOut);
+			FirstBlockOffset.Save(FOut);
+			FirstValOffset.Save(FOut);
+		}
 	}
 }
 
+/// Save part of the data, given time-window
+template <class TVal>
+int TWndBlockCache<TVal>::PartialFlush(int WndInMsec = 500) {
+	TTmStopWatch sw(true);
+	int res = 0;
+	TLstNd<TInt>* current = BlockCache.Last();
+	while (current != NULL) {
+		if (sw.GetMSecInt() > WndInMsec) {
+			break; // time is up
+		}
+		TInt Key = current->GetVal();
+		PBlockDat Dat;
+		BlockCache.Get(Key, Dat);
+		if (Dat->IsChanged()) {
+			StoreBlock(Key);
+			Dat->SetNotChanged();
+			res++;
+		}
+		current = current->Prev();
+	}
+	return res;
+}
 template <class TVal>
 uint64 TWndBlockCache<TVal>::AddVal(const TVal& Val) {
 	// get last block, with some space left

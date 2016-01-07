@@ -473,6 +473,37 @@ void TStoreSchema::ValidateSchema(const TWPt<TBase>& Base, TStoreSchemaV& Schema
 
 ///////////////////////////////
 // In-memory storage
+
+TInMemStorage::TInMemStorage(const PBlobBs& MasterBlob, const int& _BlockSize) : BlockSize(_BlockSize) {
+	MasterBlobBsInit = false;
+	MasterBlobBsUsed = true;
+	BlobStorage = MasterBlob;
+}
+
+TInMemStorage::TInMemStorage(const PBlobBs& MasterBlob, const TBlobPt& MasterBlobPt, const bool& _Lazy) {
+	MasterBlobBsInit = true;
+	MasterBlobBsUsed = true;
+	MasterBlobBsLoc = MasterBlobPt;
+	BlobStorage = MasterBlob;
+
+	// load data
+	PSIn FIn = BlobStorage->GetBlob(MasterBlobPt);
+	BlobPtV.Load(*FIn());
+	TInt64 cnt;
+	cnt.Load(*FIn());
+	FirstValOffset.Load(*FIn());
+	FirstValOffsetMem.Load(*FIn());
+	BlockSize.Load(*FIn());
+
+	for (int64 i = 0; i < cnt; i++) {
+		ValV.Add(); // empty (non-loaded) data
+		DirtyV.Add(isdfNotLoaded); // init dirty flags
+	}
+	if (!_Lazy) {
+		LoadAll();
+	}
+}
+
 TInMemStorage::TInMemStorage(const TStr& _FNm, const int& _BlockSize) : FNm(_FNm), BlobFNm(_FNm + "Blob"), Access(faCreate), BlockSize(_BlockSize) {
 	BlobStorage = TMBlobBs::New(BlobFNm, Access);
 }
@@ -503,19 +534,41 @@ TInMemStorage::TInMemStorage(const TStr& _FNm, const TFAccess& _Access, const bo
 }
 
 TInMemStorage::~TInMemStorage() {
-	if (Access != faRdOnly) {
-		// store dirty vectors
-		for (int i = 0; i < ValV.Len(); i++) {
-			SaveRec(i);
-		}		
-		// save vector
-		TFOut FOut(FNm); 
-		BlobPtV.Save(FOut);
-		// save rest
-		TInt64(ValV.Len()).Save(FOut);
-		FirstValOffset.Save(FOut);
-		FirstValOffsetMem.Save(FOut);
-		BlockSize.Save(FOut);
+	Flush();
+}
+
+void TInMemStorage::Flush() {
+	if (MasterBlobBsUsed) {
+		PMem Mem = TMem::New(5 * sizeof(TBlobPt));
+		{
+			PSOut SOut = TMemOut::New(Mem);
+			BlobPtV.Save(*SOut());
+			TInt64(ValV.Len()).Save(*SOut());
+			FirstValOffset.Save(*SOut());
+			FirstValOffsetMem.Save(*SOut());
+			BlockSize.Save(*SOut());
+		}
+		PSIn SIn = TMemIn::New(*Mem());
+		if (MasterBlobBsInit) {
+			MasterBlobBsLoc = BlobStorage->PutBlob(MasterBlobBsLoc, SIn);
+		} else {
+			MasterBlobBsLoc = BlobStorage->PutBlob(SIn);
+		}
+	} else {
+		if (Access != faRdOnly) {
+			// store dirty vectors
+			for (int i = 0; i < ValV.Len(); i++) {
+				SaveRec(i);
+			}
+			// save vector
+			TFOut FOut(FNm);
+			BlobPtV.Save(FOut);
+			// save rest
+			TInt64(ValV.Len()).Save(FOut);
+			FirstValOffset.Save(FOut);
+			FirstValOffsetMem.Save(FOut);
+			BlockSize.Save(FOut);
+		}
 	}
 }
 
@@ -2886,6 +2939,78 @@ void TStoreImpl::InitDataFlags() {
 	EAssert(DataCacheP || DataMemP);    
 }
 
+TStoreImpl::TStoreImpl(const TWPt<TBase>& Base, const uint& StoreId,
+	const TStr& StoreName, const TStoreSchema& StoreSchema,
+	const int64& _MxCacheSize, const int& BlockSize) :
+	TStore(Base, StoreId, StoreName), FAccess(faCreate),
+	DataCache(Base->GetMasterBlobBs(), _MxCacheSize, 1024),
+	DataMem(Base->GetMasterBlobBs(), BlockSize) {
+
+	MasterBlobBsUsed = true;
+	MasterBlobBsInit = false;
+	MasterBlobBs = Base->GetMasterBlobBs();
+
+	SetStoreType("TStoreImpl");
+	InitFromSchema(StoreSchema);
+	// initialize data storage flags
+	InitDataFlags();
+}
+
+TStoreImpl::TStoreImpl(const TWPt<TBase>& Base, const TStr& _StoreFNm,
+	const TBlobPt& MasterBlobPt, const int64& _MxCacheSize, const bool& _Lazy = false) :
+	TStore(Base, _StoreFNm + ".BaseStore"),
+	StoreFNm(_StoreFNm), PrimaryFieldType(oftUndef),
+	DataCache(Base->GetMasterBlobBs(), _MxCacheSize),
+	DataMem(Base->GetMasterBlobBs(), _Lazy) {
+
+	MasterBlobBsUsed = true;
+	MasterBlobBsInit = true;
+	MasterBlobBsLoc = MasterBlobPt;
+	MasterBlobBs = Base->GetMasterBlobBs();
+
+	SetStoreType("TStoreImpl");
+	// load members
+	PSIn FIn = MasterBlobBs->GetBlob(MasterBlobBsLoc);
+	//TFIn FIn(StoreFNm + ".GenericStore");
+	RecNmFieldP.Load(*FIn());
+	PrimaryFieldId.Load(*FIn());
+	// deduce primary field type
+	if (PrimaryFieldId != -1) {
+		PrimaryFieldType = GetFieldDesc(PrimaryFieldId).GetFieldType();
+		if (PrimaryFieldType == oftStr) {
+			PrimaryStrIdH.Load(*FIn());
+		} else if (PrimaryFieldType == oftInt) {
+			PrimaryIntIdH.Load(*FIn());
+		} else if (PrimaryFieldType == oftUInt64) {
+			PrimaryUInt64IdH.Load(*FIn());
+		} else if (PrimaryFieldType == oftFlt) {
+			PrimaryFltIdH.Load(*FIn());
+		} else if (PrimaryFieldType == oftTm) {
+			PrimaryTmMSecsIdH.Load(*FIn());
+		} else {
+			throw TQmExcept::New("Unsupported primary field type!");
+		}
+	} else {
+		// backwards compatibility
+		PrimaryStrIdH.Load(*FIn());
+	}
+	// load time window    
+	WndDesc.Load(*FIn());
+	// load data
+	SerializatorCache = new TRecSerializator(this);
+	SerializatorMem = new TRecSerializator(this);
+	SerializatorCache->Load(*FIn());
+	SerializatorMem->Load(*FIn());
+
+	// initialize field to storage location map
+	InitFieldLocV();
+	// initialize record indexer
+	RecIndexer = TRecIndexer(GetIndex(), this);
+
+	// initialize data storage flags
+	InitDataFlags();
+}
+
 TStoreImpl::TStoreImpl(const TWPt<TBase>& Base, const uint& StoreId, 
 	const TStr& StoreName, const TStoreSchema& StoreSchema, const TStr& _StoreFNm, 
 	const int64& _MxCacheSize, const int& BlockSize) :
@@ -2949,35 +3074,70 @@ TStoreImpl::TStoreImpl(const TWPt<TBase>& Base, const TStr& _StoreFNm,
 }
 
 TStoreImpl::~TStoreImpl() {
-	// save if necessary
-	if (FAccess != faRdOnly) {
-		TEnv::Logger->OnStatus(TStr::Fmt("Saving store '%s'...", GetStoreNm().CStr()));
-		// save base store
-		TFOut BaseFOut(StoreFNm + ".BaseStore");
-		SaveStore(BaseFOut);
-		// save store parameters
-		TFOut FOut(StoreFNm + ".GenericStore");
-		// save parameters about primary field
-		RecNmFieldP.Save(FOut);
-		PrimaryFieldId.Save(FOut);
-		if (PrimaryFieldType == oftInt) {
-			PrimaryIntIdH.Save(FOut);
-		} else if (PrimaryFieldType == oftUInt64) {
-			PrimaryUInt64IdH.Save(FOut);
-		} else if (PrimaryFieldType == oftFlt) {
-			PrimaryFltIdH.Save(FOut);
-		} else if (PrimaryFieldType == oftTm) {
-			PrimaryTmMSecsIdH.Save(FOut);
-		} else {
-			PrimaryStrIdH.Save(FOut);
+	Flush();
+}
+
+void TStoreImpl::Flush() {
+	if (MasterBlobBsUsed) {
+		PMem Mem = TMem::New(5 * sizeof(TBlobPt));
+		{
+			PSOut SOut = TMemOut::New(Mem);
+			RecNmFieldP.Save(*SOut());
+			PrimaryFieldId.Save(*SOut());
+			if (PrimaryFieldType == oftInt) {
+				PrimaryIntIdH.Save(*SOut());
+			} else if (PrimaryFieldType == oftUInt64) {
+				PrimaryUInt64IdH.Save(*SOut());
+			} else if (PrimaryFieldType == oftFlt) {
+				PrimaryFltIdH.Save(*SOut());
+			} else if (PrimaryFieldType == oftTm) {
+				PrimaryTmMSecsIdH.Save(*SOut());
+			} else {
+				PrimaryStrIdH.Save(*SOut());
+			}
+			// save time window
+			WndDesc.Save(*SOut());
+			// save data
+			SerializatorCache->Save(*SOut());
+			SerializatorMem->Save(*SOut());
 		}
-		// save time window
-		WndDesc.Save(FOut);
-		// save data
-		SerializatorCache->Save(FOut);
-		SerializatorMem->Save(FOut);
+		PSIn SIn = TMemIn::New(*Mem());
+		if (MasterBlobBsInit) {
+			MasterBlobBsLoc = MasterBlobBs->PutBlob(MasterBlobBsLoc, SIn);
+		} else {
+			MasterBlobBsLoc = MasterBlobBs->PutBlob(SIn);
+		}
 	} else {
-		TEnv::Logger->OnStatus("No saving of generic store " + GetStoreNm() + " neccessary!");
+		// save if necessary
+		if (FAccess != faRdOnly) {
+			TEnv::Logger->OnStatus(TStr::Fmt("Saving store '%s'...", GetStoreNm().CStr()));
+			// save base store
+			TFOut BaseFOut(StoreFNm + ".BaseStore");
+			SaveStore(BaseFOut);
+			// save store parameters
+			TFOut FOut(StoreFNm + ".GenericStore");
+			// save parameters about primary field
+			RecNmFieldP.Save(FOut);
+			PrimaryFieldId.Save(FOut);
+			if (PrimaryFieldType == oftInt) {
+				PrimaryIntIdH.Save(FOut);
+			} else if (PrimaryFieldType == oftUInt64) {
+				PrimaryUInt64IdH.Save(FOut);
+			} else if (PrimaryFieldType == oftFlt) {
+				PrimaryFltIdH.Save(FOut);
+			} else if (PrimaryFieldType == oftTm) {
+				PrimaryTmMSecsIdH.Save(FOut);
+			} else {
+				PrimaryStrIdH.Save(FOut);
+			}
+			// save time window
+			WndDesc.Save(FOut);
+			// save data
+			SerializatorCache->Save(FOut);
+			SerializatorMem->Save(FOut);
+		} else {
+			TEnv::Logger->OnStatus("No saving of generic store " + GetStoreNm() + " neccessary!");
+		}
 	}
 	delete SerializatorCache;
 	delete SerializatorMem;
