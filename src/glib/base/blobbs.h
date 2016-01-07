@@ -241,6 +241,7 @@ public:
 
   virtual const TBlobBsStats& GetStats()=0;
   virtual void ResetStats() = 0;
+  virtual TFAccess GetFAccess() = 0;
 };
 
 /////////////////////////////////////////////////
@@ -285,6 +286,7 @@ public:
 
   const TBlobBsStats& GetStats() { return Stats; }
   void ResetStats() { Stats.Reset(); }
+  TFAccess GetFAccess() { return Access; }
 };
 
 /////////////////////////////////////////////////
@@ -327,5 +329,6 @@ public:
 
   const TBlobBsStats& GetStats();
   void ResetStats();
+  TFAccess GetFAccess() { return Access; }
 };
 

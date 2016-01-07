@@ -544,6 +544,12 @@ private:
 	// offset of the oldest record within the oldest block
 	TInt FirstValOffset;
 
+	/// Is this object using master BlobBs
+	bool MasterBlobBsUsed;
+	/// Has this object been loaded from the master BlobBs or not
+	bool MasterBlobBsInit;
+	/// Location in MasterBlobBs where this object's bureaucracy is stored
+	TBlobPt MasterBlobBsLoc;
 private:
 	// asserts if we are allowed to change stuff
 	void AssertReadOnly() const {
@@ -573,6 +579,10 @@ private:
 	}
 	
 public:
+	// Constructor that uses master PBlobBs - so that all data is stored in single place
+	TWndBlockCache(const PBlobBs& MasterBlob, const int64& MxCacheMem);
+	// Constructor that uses master PBlobBs - so that all data is stored in single place
+	TWndBlockCache(const PBlobBs& MasterBlob, const TBlobPt& MasterBlobPt, const int64& MxCacheMem);
 	TWndBlockCache(const TStr& _FNmPrefix, const int64& MxCacheMem, const int& _BlockSize);
 	TWndBlockCache(const TStr& _FNmPrefix, const TFAccess& _Access, const int64& MxCacheMem);
 	~TWndBlockCache();
@@ -700,6 +710,51 @@ void TWndBlockCache<TVal>::DelBlock() {
 	}
 	// forget blob pointer
 	BlockBlobPtV.Del(0);
+}
+
+/// Constructor that uses master PBlobBs - so that all data is stored in single place
+//TWndBlockCache(const PBlobBs& MasterBlob, const int64& MxCacheMem);
+/// Constructor that uses master PBlobBs - so that all data is stored in single place
+//TWndBlockCache(const PBlobBs& MasterBlob, const& TBlobPt MasterBlobPt, const int64& MxCacheMem);
+
+template <class TVal>
+TWndBlockCache<TVal>::TWndBlockCache(const PBlobBs& MasterBlob, const int64& MxCacheMem) :
+	BlockSize(_BlockSize), BlockCache(MxCacheMem, 1000000, GetVoidThis()) {
+
+	// initialize storage parameters
+	MasterBlobBsUsed = true;
+	MasterBlobBsInit = false;
+	BlockBlobBs = _MasterBlob;
+
+	// initialize cache parameters
+	CacheResetThreshold = MAX(int64(0.1 * double(MxCacheMem)), int64(10 * 1024 * 1024));
+	NewCacheSizeInc = 0;
+	// initialize value disk store
+	
+	// create first block
+	EAssertR(AddBlock() == 0, "Error creating first cache block");
+}
+
+template <class TVal>
+TWndBlockCache<TVal>::TWndBlockCache(const PBlobBs& MasterBlob, const TBlobPt& MasterBlobPt, const int64& MxCacheMem) :
+	BlockSize(_BlockSize), BlockCache(MxCacheMem, 1000000, GetVoidThis()) {
+
+	// initialize storage parameters
+	MasterBlobBsUsed = true;
+	MasterBlobBsInit = true;
+	MasterBlobBsLoc = MasterBlobPt;
+	BlockBlobBs = MasterBlob;
+
+	// initialize cache parameters
+	CacheResetThreshold = MAX(int64(0.1 * double(MxCacheMem)), int64(10 * 1024 * 1024));
+	NewCacheSizeInc = 0;
+	// initialize value disk store
+	PSIn FIn = BlockBlobBs->GetBlob(MasterBlobPt);
+	Vals.Load(FIn);
+	BlockSize.Load(FIn);
+	BlockBlobPtV.Load(FIn);
+	FirstBlockOffset.Load(FIn);
+	FirstValOffset.Load(FIn);
 }
 
 template <class TVal>
