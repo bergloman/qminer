@@ -47,7 +47,19 @@ describe('Index-Join Test', function () {
         assert(base.store('People')[id2].friends[1].name == "Mary");
         assert(base.store('People')[id2].friends[1].$fq == 3);
 
-        //base.store('People')[id2].friends.each(function (rec) { console.log(rec.name); });
+        // check that filterByField handles index-joins
+        
+        var rs_all = base.store('People')
+            .allRecords
+            .filterByField("friends", id2, id2); // return all that have Mary as friend => John, Mary
+            
+        console.log(rs_all.length);
+        assert(rs_all.length == 2);
+        assert(rs_all[0].$id == id1);
+        assert(rs_all[0].name == "John");
+        assert(rs_all[1].$id == id2);
+        assert(rs_all[1].name == "Mary");
+            
 
         base.close();    
     })
@@ -86,11 +98,19 @@ function FillAndCheck(base, rec_id_type, freq_type) {
     rec2 = base.store('People')[id2];
     
     assert(rec1.parent.name == "Mary");
-    console.log(rec1.parent.$fq, freq_type);
     assert(rec1.parent.$fq == (freq_type == "" ? 1 : 7));
     
     assert(rec2.parent.name == "Jim");
     assert(rec2.parent.$fq == (freq_type == "" ? 1 : 8));
+
+    // perform filterByField
+    
+    var rs_all = base.store('People')
+        .allRecords
+        .filterByField("parent", id2, id2);
+    assert(rs_all.length == 1);
+    assert(rs_all[0].$id == id1);
+    assert(rs_all[0].name == "John");
 
     base.close();    
 }
