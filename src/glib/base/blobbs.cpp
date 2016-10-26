@@ -306,6 +306,9 @@ TBlobPt TGBlobBs::PutBlob(const PSIn& SIn){
   int MxBfL; int FFreeBlobPtN;
   GetAllocInfo(BfL, BlockLenV, MxBfL, FFreeBlobPtN);
   TBlobPt BlobPt; TCs Cs;
+  if (FFreeBlobPtV[FFreeBlobPtN].Empty()) {
+      TryFragment(BfL); // try fragmentation
+  }
   if (FFreeBlobPtV[FFreeBlobPtN].Empty()){
     // allocate new block in BLOB storage
     int FLen=FBlobBs->GetFLen();
