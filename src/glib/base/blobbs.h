@@ -232,6 +232,7 @@ private:
   TBlobPt FirstBlobPt;
   static TStr GetNrBlobBsFNm(const TStr& BlobBsFNm);
   TBlobBsStats Stats;
+  bool TryFragment(int BfL);
 public:
   TGBlobBs(const TStr& BlobBsFNm, const TFAccess& _Access=faRdOnly,
    const int& _MxSegLen=-1);

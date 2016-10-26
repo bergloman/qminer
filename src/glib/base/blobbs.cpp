@@ -236,6 +236,70 @@ TGBlobBs::~TGBlobBs(){
   FBlobBs=NULL;
 }
 
+void CalculateFragments(const int BfL, const int AvailLen, const TIntV& BlockLenV, TIntV& Fragments) {
+    Fragments.Clr();
+    Fragments.Add(BfL);
+    int RemainLen = AvailLen - BfL;
+    int i = BlockLenV.Len() - 1;
+    while (RemainLen > 0) {
+        while (i >= 0 && BlockLenV[i] > AvailLen) {
+            i--;
+        }
+        Fragments.Add(BlockLenV[i]);
+        RemainLen -= BlockLenV[i];
+    }
+    EAssertR(RemainLen==0, "Error while fragmenting existing TGBlobBs slot - remainder not zero");
+}
+
+bool TGBlobBs::TryFragment(int BfL) {
+    int i = 0;
+    while ((i < BlockLenV.Len()) && (BfL > BlockLenV[i])) {
+        i++;
+    }
+    int TargetI = i++;
+    BfL = BlockLenV[TargetI]; // increase to allocation size - the size of chunk that gets allocated
+    // find first available slot, bigger that BfL
+    while (i < FFreeBlobPtV.Len() && FFreeBlobPtV[i].Empty()) {
+        i++;
+    }
+    if (i == FFreeBlobPtV.Len()) {
+        // no candidate for fragmentation
+        return false;
+    }
+    
+    // calculate fragments
+    TIntV fragments;
+    CalculateFragments(BfL, BlockLenV[i], BlockLenV, fragments);
+
+    // remove existing deleted block from the deleted chain 
+    TBlobPt BlobPt = FFreeBlobPtV[i];
+    FBlobBs->SetFPos(BlobPt.GetAddr());
+    AssertBlobTag(FBlobBs, btBegin);
+    int MxBfL = FBlobBs->GetInt();
+    int FPos = FBlobBs->GetFPos();
+    AssertBlobState(FBlobBs, bsFree);
+    FFreeBlobPtV[i] = TBlobPt::LoadAddr(FBlobBs);
+
+    // rewrite contents with fragments
+    FBlobBs->SetFPos(BlobPt.GetAddr());
+    for (int j = 0; j < fragments.Len(); j++) {
+        int MxBfL = fragments[j];
+        PutBlobTag(FBlobBs, btBegin);
+        FBlobBs->PutInt(MxBfL);
+        PutBlobState(FBlobBs, bsFree);
+        int _MxBfL; int FFreeBlobPtN;
+        GetAllocInfo(MxBfL, BlockLenV, _MxBfL, FFreeBlobPtN);
+        EAssert(MxBfL == _MxBfL);
+        FFreeBlobPtV[FFreeBlobPtN].SaveAddr(FBlobBs);
+        FFreeBlobPtV[FFreeBlobPtN] = BlobPt;
+        FBlobBs->PutCh(TCh::NullCh, MxBfL + sizeof(TCs));
+        AssertBlobTag(FBlobBs, btEnd);
+        BlobPt.PutAddr(FBlobBs->GetFPos()); // move pointer to the end of written content
+    }
+    FBlobBs->Flush();
+    return true;
+}
+
 TBlobPt TGBlobBs::PutBlob(const PSIn& SIn){
   EAssert((Access==faCreate)||(Access==faUpdate)||(Access==faRestore));
   int BfL=SIn->Len();
