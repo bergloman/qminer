@@ -243,7 +243,7 @@ TBlobPt TGBlobBs::PutBlob(const PSIn& SIn){
   GetAllocInfo(BfL, BlockLenV, MxBfL, FFreeBlobPtN);
   TBlobPt BlobPt; TCs Cs;
   if (FFreeBlobPtV[FFreeBlobPtN].Empty()){
-	// allocate new block in BLOB storage
+    // allocate new block in BLOB storage
     int FLen=FBlobBs->GetFLen();
     if (FLen<=MxSegLen){
       EAssert(FLen<=MxBlobFLen);
@@ -258,13 +258,13 @@ TBlobPt TGBlobBs::PutBlob(const PSIn& SIn){
       FBlobBs->PutCs(Cs);
       PutBlobTag(FBlobBs, btEnd);
 
-	  Stats.AllocCount++;
-	  Stats.AllocSize += MxBfL;
-	  Stats.AllocUnusedSize += (MxBfL - BfL);
-	  Stats.AllocUsedSize += BfL;
+      Stats.AllocCount++;
+      Stats.AllocSize += MxBfL;
+      Stats.AllocUnusedSize += (MxBfL - BfL);
+      Stats.AllocUsedSize += BfL;
     }
   } else {
-	// ok, reuse existing BLOB pointer of the BLOB of the same size that was freed earlier
+    // ok, reuse existing BLOB pointer of the BLOB of the same size that was freed earlier
     BlobPt=FFreeBlobPtV[FFreeBlobPtN];
     FBlobBs->SetFPos(BlobPt.GetAddr());
     AssertBlobTag(FBlobBs, btBegin);
@@ -280,12 +280,12 @@ TBlobPt TGBlobBs::PutBlob(const PSIn& SIn){
     FBlobBs->PutCs(Cs);
     AssertBlobTag(FBlobBs, btEnd);
 
-	Stats.AllocCount++;
-	Stats.AllocSize += MxBfL;
-	Stats.AllocUnusedSize += (MxBfL - BfL);
-	Stats.AllocUsedSize += BfL;
-	Stats.ReleasedCount--;
-	Stats.ReleasedSize -= MxBfL;
+    Stats.AllocCount++;
+    Stats.AllocSize += MxBfL;
+    Stats.AllocUnusedSize += (MxBfL - BfL);
+    Stats.AllocUsedSize += BfL;
+    Stats.ReleasedCount--;
+    Stats.ReleasedSize -= MxBfL;
   }
   FBlobBs->Flush();
   Stats.PutsNew++;
@@ -302,13 +302,13 @@ TBlobPt TGBlobBs::PutBlob(const TBlobPt& BlobPt, const PSIn& SIn){
   int MxBfL=FBlobBs->GetInt();
   AssertBlobState(FBlobBs, bsActive);
   if (BfL>MxBfL){
-	Stats.SizeChngs++;
+    Stats.SizeChngs++;
     DelBlob(BlobPt);
     return PutBlob(SIn);
   } else {
-	int FPos = FBlobBs->GetFPos();
-	int OldBfL = FBlobBs->GetInt();
-	FBlobBs->SetFPos(FPos);
+    int FPos = FBlobBs->GetFPos();
+    int OldBfL = FBlobBs->GetInt();
+    FBlobBs->SetFPos(FPos);
 
     TCs Cs;
     FBlobBs->PutInt(BfL);
@@ -317,12 +317,12 @@ TBlobPt TGBlobBs::PutBlob(const TBlobPt& BlobPt, const PSIn& SIn){
     FBlobBs->PutCs(Cs);
     PutBlobTag(FBlobBs, btEnd);
     FBlobBs->Flush();
-	// update stats
-	Stats.Puts++;
+    // update stats
+    Stats.Puts++;
     Stats.AvgPutLen += (BfL - Stats.AvgPutLen) / Stats.Puts;
-	Stats.AllocUnusedSize -= BfL - OldBfL;
-	Stats.AllocUsedSize += BfL - OldBfL;
-	return BlobPt;
+    Stats.AllocUnusedSize -= BfL - OldBfL;
+    Stats.AllocUsedSize += BfL - OldBfL;
+    return BlobPt;
   }
 }
 
