@@ -242,7 +242,7 @@ void CalculateFragments(const int BfL, const int AvailLen, const TIntV& BlockLen
     int RemainLen = AvailLen - BfL;
     int i = BlockLenV.Len() - 1;
     while (RemainLen > 0) {
-        while (i >= 0 && BlockLenV[i] > AvailLen) {
+        while (i >= 0 && BlockLenV[i] > RemainLen) {
             i--;
         }
         Fragments.Add(BlockLenV[i]);
