@@ -152,3 +152,5 @@ binding-1.gyp
 # GIT FILES
 *.orig
 /TestStore
+/.vscode
+/package-lock.json

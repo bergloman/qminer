@@ -144,6 +144,9 @@
                 # statistics
                 'src/nodejs/statistics/stat_nodejs.h',
                 'src/nodejs/statistics/stat_nodejs.cpp',
+                # Anomaly-detection
+                'src/third_party/anomaly_detection/anomaly_detection_node.h',
+                'src/third_party/anomaly_detection/anomaly_detection_node.cpp',
                 # StreamStory
                 'src/third_party/streamstory/streamstory_node.h',
                 'src/third_party/streamstory/streamstory_node.cpp',
@@ -180,6 +183,8 @@
                 'src/nodejs/snap',
                 'src/nodejs/ht',
                 'src/nodejs/statistics',
+                # Anomaly detection
+                'src/third_party/anomaly_detection/',
                 # StreamStory
                 'src/third_party/streamstory/',
                 # Geospatial
@@ -221,6 +226,9 @@
                 'src/qminer/qminer_aggr.h',
                 'src/qminer/qminer_aggr.hpp',
                 'src/qminer/qminer_aggr.cpp',
+                # Anomaly-detection
+                'src/third_party/anomaly_detection/anomaly_detection.h',
+                'src/third_party/anomaly_detection/anomaly_detection.cpp',
                 # StreamStory
                 'src/third_party/streamstory/streamstory.h',
                 'src/third_party/streamstory/streamstory.cpp',
