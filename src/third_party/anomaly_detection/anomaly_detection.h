@@ -15,13 +15,27 @@
 namespace TAd
 {
 
-class TAnomalyDetection
-{
-  private:
-  public:
-    TAnomalyDetection();
-    void Print();
+class TExtremeValuesDetector {
+private:
+  TVec<TPair<<TTm, TFlt>> Vals;
+public:
+  TExtremeValuesDetector();
+  bool Add(const TTm& Tm, const double Val);
+  void Reset();
 };
+
+class TValueTrendDetector {
+private:
+public:
+  TValueTrendDetector();
+};
+
+class TFlowRateDetector {
+private:
+public:
+  TFlowRateDetector();
+};
+
 }
 
 #endif

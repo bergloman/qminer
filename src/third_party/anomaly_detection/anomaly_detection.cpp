@@ -10,12 +10,26 @@
 
 namespace TAd
 {
-
-TAnomalyDetection::TAnomalyDetection() {
+    
+TExtremeValuesDetector::TExtremeValuesDetector() {
 }
 
-void TAnomalyDetection::Print(){
-    printf("Ua\n");
+bool TExtremeValuesDetector::Add(const TTm& Tm, const double Val) {
+    Vals.Add(TPair<TTm, TFlt>(Tm, Val));
+}
+
+void TExtremeValuesDetector::Reset() {
+    Vals.Clr();
+}
+
+/////////////////////////////////////////////////////////////////////
+
+TExtremeValuesDetector::TExtremeValuesDetector() {
+}
+
+/////////////////////////////////////////////////////////////////////
+
+TFlowRateDetector::TFlowRateDetector() {
 }
 
 }
