@@ -17,7 +17,7 @@ namespace TAd
 
 class TExtremeValuesDetector {
 private:
-  TVec<TPair<<TTm, TFlt>> Vals;
+  TVec<TPair<TTm, TFlt>> Vals;
 public:
   TExtremeValuesDetector();
   bool Add(const TTm& Tm, const double Val);

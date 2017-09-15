@@ -16,6 +16,7 @@ TExtremeValuesDetector::TExtremeValuesDetector() {
 
 bool TExtremeValuesDetector::Add(const TTm& Tm, const double Val) {
     Vals.Add(TPair<TTm, TFlt>(Tm, Val));
+    return true;
 }
 
 void TExtremeValuesDetector::Reset() {
@@ -24,7 +25,7 @@ void TExtremeValuesDetector::Reset() {
 
 /////////////////////////////////////////////////////////////////////
 
-TExtremeValuesDetector::TExtremeValuesDetector() {
+TValueTrendDetector::TValueTrendDetector() {
 }
 
 /////////////////////////////////////////////////////////////////////
