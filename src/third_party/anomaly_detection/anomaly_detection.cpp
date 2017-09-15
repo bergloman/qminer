@@ -8,19 +8,52 @@
 
 #include "anomaly_detection.h"
 
-namespace TAd
-{
-    
+#define MAX_INVALID_LEN 100
+
+namespace TAd {
+
 TExtremeValuesDetector::TExtremeValuesDetector() {
+    MaxWndLen = -1;
+    MaxWndLenMSec = -1;
+    StartValidData = 0;
 }
 
-bool TExtremeValuesDetector::Add(const TTm& Tm, const double Val) {
-    Vals.Add(TPair<TTm, TFlt>(Tm, Val));
-    return true;
+TExtremeValuesDetector::TExtremeValuesDetector(const int Len, bool IsMsec) {
+    MaxWndLen = (IsMsec ? -1 : Len);
+    MaxWndLenMSec = (IsMsec ? Len : -1);
+    StartValidData = 0;
+}
+
+
+bool TExtremeValuesDetector::Add(const TUInt64& Tm, const double Val) {
+    // TODO run detection
+    bool Res = true;
+    Vals.Add(TPair<TUInt64, TFlt>(Tm, Val));
+    if (MaxWndLen > 0) {
+        while (Vals.Len() - StartValidData > MaxWndLen) {
+            StartValidData++;
+        }
+        if (StartValidData > MAX_INVALID_LEN) {
+            Vals.DelMemCpy(0, StartValidData - 1);
+            StartValidData = 0;
+        }
+    } else if (MaxWndLenMSec > 0) {
+        TUInt64 limit = Tm;
+        limit = limit - MaxWndLenMSec;
+        while (Vals[StartValidData].Val1 < limit) {
+            StartValidData++;
+        }
+        if (StartValidData > MAX_INVALID_LEN) {
+            Vals.DelMemCpy(0, StartValidData - 1);
+            StartValidData = 0;
+        }
+    }
+    return Res;
 }
 
 void TExtremeValuesDetector::Reset() {
     Vals.Clr();
+    StartValidData = 0;
 }
 
 /////////////////////////////////////////////////////////////////////

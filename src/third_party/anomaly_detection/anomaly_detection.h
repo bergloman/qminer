@@ -12,28 +12,31 @@
 #include "base.h"
 #include "mine.h"
 
-namespace TAd
-{
+namespace TAd {
 
 class TExtremeValuesDetector {
 private:
-  TVec<TPair<TTm, TFlt>> Vals;
+    TVec<TPair<TUInt64, TFlt>> Vals;
+    TInt MaxWndLen;
+    TInt MaxWndLenMSec;
+    TInt StartValidData;
 public:
-  TExtremeValuesDetector();
-  bool Add(const TTm& Tm, const double Val);
-  void Reset();
+    TExtremeValuesDetector();
+    TExtremeValuesDetector(const int Len, bool IsMsec);
+    bool Add(const TUInt64& Tm, const double Val);
+    void Reset();
 };
 
 class TValueTrendDetector {
 private:
 public:
-  TValueTrendDetector();
+    TValueTrendDetector();
 };
 
 class TFlowRateDetector {
 private:
 public:
-  TFlowRateDetector();
+    TFlowRateDetector();
 };
 
 }
