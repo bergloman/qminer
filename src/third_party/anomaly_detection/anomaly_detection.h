@@ -14,6 +14,17 @@
 
 namespace TAd {
 
+//class TFloatWndVec {
+//private:
+//    TVec<TPair<TUInt64, TFlt>> Vals;
+//    TInt MaxWndLen;
+//    TInt StartValidData;
+//public:
+//    TFloatWndVec(const int MaxLen);
+//    void Add(const TUInt64& Tm, const double Val);    
+//    void Reset();
+//};
+
 class TExtremeValuesDetector {
 private:
     TVec<TPair<TUInt64, TFlt>> Vals;
@@ -29,6 +40,10 @@ public:
 
 class TValueTrendDetector {
 private:
+    TVec<TPair<TUInt64, TFlt>> Vals;
+    TInt CurrWnd;
+    TInt HistWnd;
+    TInt StartValidData;
 public:
     TValueTrendDetector();
 };

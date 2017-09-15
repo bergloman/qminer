@@ -12,6 +12,28 @@
 
 namespace TAd {
 
+//TFloatWndVec::TFloatWndVec(const int MaxLen) {
+//    MaxWndLen = MaxLen;
+//    StartValidData = 0;
+//}
+//void TFloatWndVec::Reset() {
+//    Vals.Clr();
+//    StartValidData = 0;
+//}
+//void TFloatWndVec::Add(const TUInt64& Tm, const double Val) {
+//    Vals.Add(TPair<TUInt64, TFlt>(Tm, Val));
+//    if (MaxWndLen > 0) {
+//        while (Vals.Len() - StartValidData > MaxWndLen) {
+//            StartValidData++;
+//        }
+//        if (StartValidData > MAX_INVALID_LEN) {
+//            Vals.DelMemCpy(0, StartValidData - 1);
+//            StartValidData = 0;
+//        }
+//    }
+//}
+
+
 TExtremeValuesDetector::TExtremeValuesDetector() {
     MaxWndLen = -1;
     MaxWndLenMSec = -1;
