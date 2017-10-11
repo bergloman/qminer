@@ -52,9 +52,7 @@ bool TExtremeValuesDetector::Add(const TUInt64& Tm, const double Val) {
     bool Res = true;
     Vals.Add(TPair<TUInt64, TFlt>(Tm, Val));
     if (MaxWndLen > 0) {
-        while (Vals.Len() - StartValidData > MaxWndLen) {
-            StartValidData++;
-        }
+        StartValidData = Vals.Len() - MaxWndLen;
         if (StartValidData > MAX_INVALID_LEN) {
             Vals.DelMemCpy(0, StartValidData - 1);
             StartValidData = 0;
