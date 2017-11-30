@@ -13,66 +13,70 @@
 #include "mine.h"
 
 namespace TAd {
-
-//class TFloatWndVec {
+//
+////class TFloatWndVec {
+////private:
+////    TVec<TPair<TUInt64, TFlt>> Vals;
+////    TInt MaxWndLen;
+////    TInt StartValidData;
+////public:
+////    TFloatWndVec(const int MaxLen);
+////    void Add(const TUInt64& Tm, const double Val);    
+////    void Reset();
+////};
+//
+//class TExtremeValuesDetector {
 //private:
 //    TVec<TPair<TUInt64, TFlt>> Vals;
 //    TInt MaxWndLen;
+//    TInt MaxWndLenMSec;
 //    TInt StartValidData;
 //public:
-//    TFloatWndVec(const int MaxLen);
-//    void Add(const TUInt64& Tm, const double Val);    
+//    TExtremeValuesDetector();
+//    TExtremeValuesDetector(const int Len, bool IsMsec);
+//    bool Add(const TUInt64& Tm, const double Val);
 //    void Reset();
 //};
-
-class TExtremeValuesDetector {
-private:
-    TVec<TPair<TUInt64, TFlt>> Vals;
-    TInt MaxWndLen;
-    TInt MaxWndLenMSec;
-    TInt StartValidData;
-public:
-    TExtremeValuesDetector();
-    TExtremeValuesDetector(const int Len, bool IsMsec);
-    bool Add(const TUInt64& Tm, const double Val);
-    void Reset();
-};
-
-class TValueTrendDetector {
-private:
-    TVec<TPair<TUInt64, TFlt>> Vals;
-    TInt CurrWnd;
-    TInt HistWnd;
-    TInt StartValidData;
-public:
-    TValueTrendDetector();
-};
-
-class TFlowRateDetector {
-private:
-public:
-    TFlowRateDetector();
-};
-
-
-
-class dA {
-
-public:
-    int N;
-    int n_visible;
-    int n_hidden;
-    double **W;
-    double *hbias;
-    double *vbias;
-    dA(int, int, int, double**, double*, double*);
-    ~dA();
-    void get_corrupted_input(int*, int*, double);
-    void get_hidden_values(int*, double*);
-    void get_reconstructed_input(double*, double*);
-    void train(int*, double, double);
-    void reconstruct(int*, double*);
-};
+//
+//class TValueTrendDetector {
+//private:
+//    TVec<TPair<TUInt64, TFlt>> Vals;
+//    TInt CurrWnd;
+//    TInt HistWnd;
+//    TInt StartValidData;
+//public:
+//    TValueTrendDetector();
+//};
+//
+//class TFlowRateDetector {
+//private:
+//public:
+//    TFlowRateDetector();
+//};
+//
+//
+//
+//class dA {
+//private:
+//    TRnd rnd;
+//    double uniform(double min, double max);
+//    int binomial(int n, double p);
+//    double sigmoid(double x);
+//public:
+//    int N;
+//    int n_visible;
+//    int n_hidden;
+//    TFullColMatrix W;
+//    TFltV hbias;
+//    TFltV vbias;
+//    dA(int size, int n_v, int n_h);
+//    ~dA();
+//    void get_corrupted_input(int*, int*, double);
+//    void get_hidden_values(const TFltV& In, TFltV& Out);
+//    void get_reconstructed_input(const TFltV& In, TFltV& Out);
+//    void train(int*, double, double);
+//    void reconstruct(const TFltV& In, TFltV& Out);
+//};
 
 }
 

@@ -1672,7 +1672,7 @@ public:
 ///    https://github.com/vega/datalib-sketch/blob/master/src/t-digest.js
 /// Paper: Ted Dunning, Otmar Ertl
 ///    https://github.com/tdunning/t-digest/blob/master/docs/t-digest-paper/histo.pdf
-class TTDigest : public TStreamAggr, public TStreamAggrOut::IFltVec {
+class TTDigest : public TStreamAggr, public TStreamAggrOut::IFltVec, public TStreamAggrOut::IFlt {
 private:
     /// Input aggregate
     TWPt<TStreamAggr> InAggr;
@@ -1683,6 +1683,8 @@ private:
     TSignalProc::TTDigest Model;
     /// Vector of quantiles we want to track
     TFltV QuantileV;
+    /// Quantile of the last seen data-point
+    TFlt LastQuantile;
 
 protected:
     /// Update the model
@@ -1711,6 +1713,9 @@ public:
     void GetVal(const int& ElN, TFlt& Val) const;
     /// get current Quantile value vector
     void GetValV(TFltV& ValV) const;
+    
+    /// get quantile for last data point
+    double GetFlt() const;
 
     /// Get list of input aggregates
     void GetInAggrNmV(TStrV& InAggrNmV) const { InAggrNmV.Add(InAggr->GetAggrNm());}

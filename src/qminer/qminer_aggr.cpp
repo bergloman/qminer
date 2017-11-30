@@ -2116,6 +2116,7 @@ void TTDigest::OnStep(const TWPt<TStreamAggr>& CallerAggr) {
 
 void TTDigest::Add(const TFlt& Val) {
     if (InAggr->IsInit()) {
+        LastQuantile = Model.GetQuantile(Val);
         Model.Update(Val);
     }
 }
@@ -2125,7 +2126,7 @@ TTDigest::TTDigest(const TWPt<TBase>& Base, const PJsonVal& ParamVal):
 
     InAggr = ParseAggr(ParamVal, "inAggr");
     InAggrFlt = Cast<TStreamAggrOut::IFlt>(InAggr);
-    // prase model parameters
+    // parse model parameters
     ParamVal->GetObjFltV("quantiles", QuantileV);
 }
 
@@ -2149,6 +2150,9 @@ void TTDigest::GetValV(TFltV& ValV) const {
     for (int ElN = 0; ElN < QuantileV.Len(); ElN++) {
         ValV.Add(Model.GetQuantile(QuantileV[ElN]));
     }
+}
+double TTDigest::GetFlt() const {
+    return LastQuantile;
 }
 
 PJsonVal TTDigest::SaveJson(const int& Limit) const {
